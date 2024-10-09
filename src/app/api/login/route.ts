@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import puppeteer, { type HTTPRequest } from "puppeteer";
+import { headers, loginApi } from "./useLogin";
+import axios from "axios";
 
 export async function POST(req: Request) {
   try {
@@ -16,7 +18,7 @@ export async function POST(req: Request) {
     await page.setRequestInterception(true);
     const requestPromise = new Promise<string>((resolve) => {
       page.on("request", (interceptedRequest: HTTPRequest) => {
-        if (interceptedRequest.url().includes("/login-via-catchtable")) {
+        if (interceptedRequest.url() === loginApi) {
           const postData = interceptedRequest.postData();
 
           if (postData) {
@@ -34,7 +36,14 @@ export async function POST(req: Request) {
     await page.waitForNavigation();
     const encryptedPassword = await requestPromise;
     await browser.close();
-    return NextResponse.json({ loginKey, encryptedPassword }, { status: 200 });
+
+    const response = await axios.post(
+      loginApi,
+      { loginKey, encryptedPassword },
+      { headers }
+    );
+
+    return NextResponse.json({ response }, { status: 200 });
   } catch (error) {
     console.error("Error processing image:", error);
     return NextResponse.json(
